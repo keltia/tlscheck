@@ -4,7 +4,7 @@
 This package implements reading the json from ssllabs-scan output
 and generating a csv file.
 */
-package main // import "github.com/keltia/erc-checktls"
+package main // import "github.com/keltia/tlscheck"
 
 import (
 	"flag"
