@@ -14,24 +14,22 @@ import (
 )
 
 var (
-	fDebug         bool
-	fJobs          int
-	fType          string
-	fOutput        string
-	fSummary       string
-	fSiteName      string
-	fIgnoreImirhil bool
-	fIgnoreMozilla bool
-	fVerbose       bool
+	fDebug bool
 
-	fCmdWild bool
+	fJobs int
+
+	fList    string
+	fType    string
+	fOutput  string
+	fSummary string
+
+	fVerbose bool
 )
 
 const (
 	cliUsage = `%s version %s - Imirhil/%s SSLLabs/%s Mozilla/%s
 
-Usage: %s [-hvDIM] [-j n] [-t text|csv|html] [-s file] [-S site] [-o file] file[.json]
-       %s [-vD] -wild file[.json]
+Usage: %s [-hvDIM] [-j n] [-t text|csv|html] [-s file] [-o file] [-file fn] [site]
 
 `
 )
@@ -45,15 +43,15 @@ var Usage = func() {
 }
 
 func init() {
+	// Main switches
+	flag.StringVar(&fList, "list", "", "Specify the list of sites")
+
+	flag.StringVar(&fType, "t", "csv", "Type of report")
+
 	flag.IntVar(&fJobs, "j", runtime.NumCPU(), "# of parallel jobs")
 	flag.StringVar(&fOutput, "o", "-", "Save into file (default stdout)")
 	flag.StringVar(&fSummary, "s", "summaries", "Save summary there")
-	flag.StringVar(&fType, "t", "csv", "Type of report")
-	flag.StringVar(&fSiteName, "S", "", "Display that site")
-	flag.BoolVar(&fIgnoreImirhil, "I", false, "Do not fetch tls.imirhil.fr grade")
-	flag.BoolVar(&fIgnoreMozilla, "M", false, "Do not fetch Mozilla Observatory data")
+
 	flag.BoolVar(&fDebug, "D", false, "Debug mode")
 	flag.BoolVar(&fVerbose, "v", false, "Verbose mode")
-
-	flag.BoolVar(&fCmdWild, "wild", false, "Display wildcards")
 }
