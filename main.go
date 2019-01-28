@@ -111,13 +111,6 @@ func main() {
 	// Open output file
 	fOutputFH := checkOutput(fOutput)
 
-	if fCmdWild {
-		str := displayWildcards(allSites)
-		debug("str=%s\n", str)
-		fmt.Fprintf(fOutputFH, "All wildcards certs:\n%s", str)
-		os.Exit(0)
-	}
-
 	// generate the final report & summary
 	final, err := NewTLSReport(allSites)
 	if err != nil {
