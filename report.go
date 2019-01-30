@@ -16,6 +16,8 @@ import (
 
 	"github.com/atotto/encoding/csv"
 	"github.com/ivpusic/grpool"
+	"github.com/keltia/cryptcheck"
+	"github.com/keltia/observatory"
 	"github.com/keltia/ssllabs"
 	"github.com/pkg/errors"
 )
@@ -23,6 +25,10 @@ import (
 var (
 	// this is to protect the Sites array
 	lock sync.Mutex
+
+	lab  *ssllabs.Client
+	moz  *observatory.Client
+	irml *cryptcheck.Client
 )
 
 // Private functions
@@ -42,6 +48,64 @@ func getResults(file string) (res []byte, err error) {
 func getSSLablsVersion(site ssllabs.Host) string {
 	debug("%#v", site)
 	return fmt.Sprintf("%s/%s", site.EngineVersion, site.CriteriaVersion)
+}
+
+func processOne(site string) (TLSSite, error) {
+
+	// Gather all data
+	slabs, _ := lab.GetDetailedReport(site)
+
+	//smoz, err := moz.GetScore(site)
+
+	//schk, err := irml.GetScore(site)
+
+	s := NewTLSSite(slabs)
+	return s, nil
+}
+
+type Result struct{}
+
+func NewResult() *Result { return &Result{} }
+
+func (r *Result) Add(s TLSSite) {}
+
+func processList(list []string) (*Result, error) {
+	if len(list) == 0 {
+		return nil, fmt.Errorf("empty list")
+	}
+
+	verbose("%d sites found.\n", len(list))
+
+	pool := grpool.NewPool(fJobs, len(list))
+
+	// release resources used by pool
+	defer pool.Release()
+
+	pool.WaitCount(len(list))
+
+	res := NewResult()
+
+	// Now analyze each site
+	for _, site := range list {
+		debug("queueing %s\n", site)
+
+		current := site
+		pool.JobQueue <- func() {
+			completed, _ := processOne(current)
+			// Block on mutex
+			lock.Lock()
+			res.Add(completed)
+			lock.Unlock()
+
+			pool.JobDone()
+		}
+	}
+
+	pool.WaitAll()
+	verbose("got all %d sites\n", len(e.Sites))
+	debug("all=%v\n", res)
+	//sort.Sort(ByAlphabet(*res))
+	return res, nil
 }
 
 // NewTLSReport generates everything we need for display/export
