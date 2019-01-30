@@ -21,9 +21,6 @@ var (
 	fnImirhil func(site ssllabs.Host) string
 	fnMozilla func(site ssllabs.Host) string
 
-	moz  *observatory.Client
-	irml *cryptcheck.Client
-
 	DefaultIssuer = regexp.MustCompile(`(?i:GlobalSign)`)
 )
 
@@ -57,57 +54,41 @@ func findServerType(site ssllabs.Host) int {
 		return TypeHTTP
 	}
 
-	if !fIgnoreMozilla {
-		// Check the Mozilla report
-		if yes, _ := moz.IsHTTPSonly(site.Host); yes {
-			return TypeHTTPSok
-		}
+	// Check the Mozilla report
+	if yes, _ := moz.IsHTTPSonly(site.Host); yes {
+		return TypeHTTPSok
 	}
 	return TypeHTTPSnok
 }
 
 func initAPIs() {
-	if !fIgnoreImirhil {
-		cnf := cryptcheck.Config{
-			Log:     logLevel,
-			Refresh: true,
-			Timeout: 30,
-		}
-		irml = cryptcheck.NewClient(cnf)
+	irml = cryptcheck.NewClient(cryptcheck.Config{
+		Log:     logLevel,
+		Refresh: true,
+		Timeout: 30,
+	})
 
-		fnImirhil = func(site ssllabs.Host) string {
-			debug("  imirhil\n")
-			score, err := irml.GetScore(site.Host)
-			if err != nil {
-				verbose("cryptcheck error: %s (%s)\n", site.Host, err.Error())
-			}
-			return score
+	fnImirhil = func(site ssllabs.Host) string {
+		debug("  imirhil\n")
+		score, err := irml.GetScore(site.Host)
+		if err != nil {
+			verbose("cryptcheck error: %s (%s)\n", site.Host, err.Error())
 		}
-	} else {
-		fnImirhil = func(site ssllabs.Host) string {
-			return ""
-		}
+		return score
 	}
 
-	if !fIgnoreMozilla {
-		cnf := observatory.Config{
-			Log:     logLevel,
-			Timeout: 30,
-		}
-		moz, _ = observatory.NewClient(cnf)
+	moz, _ = observatory.NewClient(observatory.Config{
+		Log:     logLevel,
+		Timeout: 30,
+	})
 
-		fnMozilla = func(site ssllabs.Host) string {
-			debug("  observatory\n")
-			score, err := moz.GetGrade(site.Host)
-			if err != nil {
-				verbose("Mozilla error: %s (%s)\n", site.Host, err.Error())
-			}
-			return score
+	fnMozilla = func(site ssllabs.Host) string {
+		debug("  observatory\n")
+		score, err := moz.GetGrade(site.Host)
+		if err != nil {
+			verbose("Mozilla error: %s (%s)\n", site.Host, err.Error())
 		}
-	} else {
-		fnMozilla = func(site ssllabs.Host) string {
-			return ""
-		}
+		return score
 	}
 }
 
