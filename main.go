@@ -9,8 +9,10 @@ package main // import "github.com/keltia/tlscheck"
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/keltia/cryptcheck"
 	"github.com/keltia/observatory"
@@ -59,10 +61,32 @@ func init() {
 	flag.Parse()
 }
 
-func checkFlags(a []string) error {
+func readSiteList(fn string) ([]string, error) {
+	buf, err := ioutil.ReadFile(fn)
+	return strings.Split(string(buf), "\n"), err
+}
+
+func checkFlags(a []string) ([]string, error) {
+	var (
+		err      error
+		siteList []string
+	)
+
 	// Basic argument check
-	if a == nil || len(a) != 1 {
-		return fmt.Errorf("you must specify an input file!")
+	if fList != "" && len(a) != 0 {
+		return nil, fmt.Errorf("You can't specify both -list and a single sitename!")
+	}
+
+	if a == nil || len(a) == 0 && fList == "" {
+		return nil, fmt.Errorf("you must specify either -list or a sitename!")
+	}
+
+	if fList == "" {
+		siteList = append(siteList, flag.Arg(0))
+	} else {
+		if siteList, err = readSiteList(fList); err != nil {
+			return nil, err
+		}
 	}
 
 	// Set logging level
@@ -75,7 +99,7 @@ func checkFlags(a []string) error {
 		logLevel = 2
 		debug("debug mode\n")
 	}
-	return nil
+	return siteList, nil
 }
 
 // main is the the starting point
@@ -85,22 +109,14 @@ func main() {
 		filepath.Base(os.Args[0]), MyVersion, fJobs,
 		cryptcheck.MyVersion, ssllabs.MyVersion, observatory.MyVersion)
 
-	err := checkFlags(flag.Args())
+	siteList, err := checkFlags(flag.Args())
 	if err != nil {
 		fatalf("Error: %v", err.Error())
 	}
 
-	file := flag.Arg(0)
-
-	raw, err := getResults(file)
+	allSites, err := processList(siteList)
 	if err != nil {
-		fatalf("Can't read %s: %v", file, err.Error())
-	}
-
-	// raw is the []byte array to be deserialized into Hosts
-	allSites, err := ssllabs.ParseResults(raw)
-	if err != nil {
-		fatalf("Can't parse %s: %v", file, err.Error())
+		fatalf("Can't process %v: %s", siteList, err.Error())
 	}
 
 	err = loadResources(resourcesPath)
